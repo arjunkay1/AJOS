@@ -11,6 +11,9 @@
 /* Forward declaration for keyboard handler if available */
 extern void keyboard_handler(void) __attribute__((weak));
 
+/* Forward declaration for mouse handler if available */
+extern void mouse_handler(void) __attribute__((weak));
+
 /* IDT with 256 entries */
 static idt_entry_t idt[IDT_ENTRIES];
 static idt_ptr_t idt_ptr;
@@ -242,7 +245,9 @@ void irq_handler(registers_t *regs) {
             break;
 
         case 12: /* PS/2 Mouse - IRQ12 */
-            /* Mouse handler would go here */
+            if (mouse_handler) {
+                mouse_handler();
+            }
             break;
 
         default:

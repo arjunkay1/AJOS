@@ -1,5 +1,7 @@
 # AJOS - A Hobby Operating System
 
+**GitHub:** https://github.com/arjunkay1/AJOS
+
 ## What Is This Project?
 AJOS is a 32-bit operating system built from scratch for learning purposes. The OS boots via GRUB, runs on x86 (i686) architecture, and is tested using QEMU on macOS.
 
@@ -159,10 +161,44 @@ All commands use the `aj` prefix:
 - `aj reboot` - Reboot the system
 - `aj halt` - Halt the CPU
 
-### Phase 4: Graphics & GUI (Next)
-- [ ] VESA framebuffer (switch to graphics mode)
-- [ ] Drawing primitives (pixels, lines, rectangles)
-- [ ] Bitmap font rendering
-- [ ] Mouse driver (PS/2)
-- [ ] Window manager
-- [ ] Basic widgets (buttons, text)
+### Phase 4: Graphics & GUI (v1.0.0)
+- [x] VESA framebuffer (800x600, 32-bit color via Multiboot)
+- [x] Drawing primitives (pixels, lines, rectangles)
+- [x] Bitmap font rendering (8x16 VGA font)
+- [x] Mouse driver (PS/2)
+- [x] Window manager with draggable windows
+- [x] Double buffering for flicker-free rendering
+- [x] Terminal window with command support
+- [x] Taskbar with AJOS button
+
+### Session 3 - Graphics Mode & GUI (v1.0.0)
+- Implemented VESA VBE framebuffer graphics (800x600x32)
+- Modified Multiboot header to request graphics mode
+- Created drawing primitives: pixels, lines, rectangles
+- Implemented 8x16 bitmap font rendering
+- Added PS/2 mouse driver with IRQ12 handling
+- Built window manager with z-ordering
+- Implemented window dragging by titlebar
+- Added double buffering to eliminate screen flickering
+- Created terminal window emulator
+- Built taskbar with AJOS start button
+
+**New files:**
+- `kernel/graphics.c` - VESA framebuffer init, double buffering
+- `kernel/draw.c` - Drawing primitives
+- `kernel/font.c` - 8x16 VGA bitmap font
+- `kernel/mouse.c` - PS/2 mouse driver
+- `kernel/window.c` - Window manager
+- `kernel/terminal.c` - Graphical terminal emulator
+- `kernel/taskbar.c` - Desktop taskbar
+- `kernel/desktop.c` - Desktop environment main loop
+- `include/graphics.h`, `include/font.h`, `include/mouse.h`
+- `include/window.h`, `include/terminal.h`, `include/taskbar.h`
+- `include/desktop.h`
+
+**Technical details:**
+- Framebuffer address obtained from Multiboot info at offset 88
+- Back buffer (1.8MB) in BSS, copied to front buffer each frame
+- Mouse uses 3-byte packet protocol, tracks position and buttons
+- Windows stored in static array with z-order tracking
+- Terminal supports scrolling, cursor, command history

@@ -200,7 +200,7 @@ static void cmd_version(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
 
-    vga_print("AJOS v0.3\n");
+    vga_print("AJOS v1.0.0\n");
 }
 
 static void cmd_reboot(int argc, char *argv[]) {
