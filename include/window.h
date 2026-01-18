@@ -17,7 +17,7 @@ typedef struct window {
     color_t bg_color;
     // Content buffer (optional - for now we'll draw directly)
     void (*draw_content)(struct window* win);
-    void (*on_key)(struct window* win, char key);
+    void (*on_key)(struct window* win, unsigned char key);
 } window_t;
 
 // Window manager functions
@@ -29,7 +29,7 @@ void wm_destroy_window(window_t* win);
 void wm_focus_window(window_t* win);
 window_t* wm_get_focused(void);
 void wm_handle_mouse(int x, int y, int buttons);
-void wm_handle_key(char key);
+void wm_handle_key(unsigned char key);
 
 // Draw window decorations
 void wm_draw_titlebar(window_t* win);

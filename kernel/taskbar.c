@@ -8,6 +8,7 @@
 #include "font.h"
 #include "window.h"
 #include "terminal.h"
+#include "rtc.h"
 
 /* Taskbar colors */
 #define TASKBAR_BG_COLOR      RGB(64, 64, 64)    /* Dark gray (#404040) */
@@ -29,7 +30,7 @@
 #define WINDOW_BTN_HEIGHT 24
 #define WINDOW_BTN_MARGIN 4
 
-#define CLOCK_WIDTH 60
+#define CLOCK_WIDTH 96
 
 /* Taskbar state */
 static int taskbar_y = 0;
@@ -95,7 +96,48 @@ void taskbar_draw(void) {
     /* Draw clock on the right side */
     int clock_x = screen_w - CLOCK_WIDTH - START_BTN_MARGIN;
     int clock_y = taskbar_y + (TASKBAR_HEIGHT - font_get_height()) / 2;
-    font_draw_string(clock_x, clock_y, "12:00", CLOCK_TEXT_COLOR, TASKBAR_BG_COLOR);
+
+    /* Get current time from RTC */
+    rtc_time_t time;
+    rtc_get_time(&time);
+
+    /* Apply timezone offset: Eastern Time (UTC-5) */
+    int hours = time.hours;
+    hours = hours - 5;  /* EST offset */
+    if (hours < 0) hours += 24;
+
+    /* Convert to 12-hour format */
+    int is_pm = (hours >= 12);
+    int hours12 = hours % 12;
+    if (hours12 == 0) hours12 = 12;
+
+    /* Format time string (H:MM:SS AM/PM) */
+    char time_str[12];
+    int i = 0;
+
+    /* Hours (no leading zero for 12-hour format) */
+    if (hours12 >= 10) {
+        time_str[i++] = '0' + (hours12 / 10);
+    }
+    time_str[i++] = '0' + (hours12 % 10);
+    time_str[i++] = ':';
+
+    /* Minutes */
+    time_str[i++] = '0' + (time.minutes / 10);
+    time_str[i++] = '0' + (time.minutes % 10);
+    time_str[i++] = ':';
+
+    /* Seconds */
+    time_str[i++] = '0' + (time.seconds / 10);
+    time_str[i++] = '0' + (time.seconds % 10);
+    time_str[i++] = ' ';
+
+    /* AM/PM */
+    time_str[i++] = is_pm ? 'P' : 'A';
+    time_str[i++] = 'M';
+    time_str[i] = '\0';
+
+    font_draw_string(clock_x, clock_y, time_str, CLOCK_TEXT_COLOR, TASKBAR_BG_COLOR);
 
     /* Draw window buttons in the middle area */
     /* Window buttons start after start button and end before clock */

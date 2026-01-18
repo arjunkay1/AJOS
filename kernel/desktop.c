@@ -51,6 +51,27 @@ static window_t* dragging_window = 0;
 static int drag_offset_x = 0;
 static int drag_offset_y = 0;
 
+/* Window resizing state */
+#define RESIZE_BORDER 6
+#define MIN_WINDOW_WIDTH 100
+#define MIN_WINDOW_HEIGHT 80
+
+/* Resize edge flags */
+#define RESIZE_NONE   0
+#define RESIZE_LEFT   1
+#define RESIZE_RIGHT  2
+#define RESIZE_TOP    4
+#define RESIZE_BOTTOM 8
+
+static window_t* resizing_window = 0;
+static int resize_edge = RESIZE_NONE;
+static int resize_start_mx = 0;
+static int resize_start_my = 0;
+static int resize_start_x = 0;
+static int resize_start_y = 0;
+static int resize_start_w = 0;
+static int resize_start_h = 0;
+
 /*
  * Draw the mouse cursor at the given position
  */
@@ -128,6 +149,41 @@ static int point_in_titlebar(window_t* win, int x, int y) {
 }
 
 /*
+ * Check which resize edge(s) the mouse is on
+ * Returns a combination of RESIZE_* flags, or RESIZE_NONE
+ */
+static int get_resize_edge(window_t* win, int x, int y) {
+    if (!win) return RESIZE_NONE;
+
+    int edge = RESIZE_NONE;
+
+    /* Check if point is within window bounds */
+    if (x < win->x || x >= win->x + win->width ||
+        y < win->y || y >= win->y + win->height) {
+        return RESIZE_NONE;
+    }
+
+    /* Check left edge */
+    if (x < win->x + RESIZE_BORDER) {
+        edge |= RESIZE_LEFT;
+    }
+    /* Check right edge */
+    if (x >= win->x + win->width - RESIZE_BORDER) {
+        edge |= RESIZE_RIGHT;
+    }
+    /* Check top edge (but not titlebar area for dragging) */
+    if (y < win->y + RESIZE_BORDER) {
+        edge |= RESIZE_TOP;
+    }
+    /* Check bottom edge */
+    if (y >= win->y + win->height - RESIZE_BORDER) {
+        edge |= RESIZE_BOTTOM;
+    }
+
+    return edge;
+}
+
+/*
  * Check if point is in any window
  */
 static window_t* find_window_at(int x, int y) {
@@ -175,8 +231,61 @@ void desktop_run(void) {
         int left_pressed = buttons & MOUSE_LEFT_BUTTON;
         int was_left_pressed = prev_mouse_buttons & MOUSE_LEFT_BUTTON;
 
+        /* Handle resizing */
+        if (resizing_window && left_pressed) {
+            /* Continue resizing */
+            int dx = mx - resize_start_mx;
+            int dy = my - resize_start_my;
+
+            int new_x = resize_start_x;
+            int new_y = resize_start_y;
+            int new_w = resize_start_w;
+            int new_h = resize_start_h;
+
+            if (resize_edge & RESIZE_LEFT) {
+                new_x = resize_start_x + dx;
+                new_w = resize_start_w - dx;
+            }
+            if (resize_edge & RESIZE_RIGHT) {
+                new_w = resize_start_w + dx;
+            }
+            if (resize_edge & RESIZE_TOP) {
+                new_y = resize_start_y + dy;
+                new_h = resize_start_h - dy;
+            }
+            if (resize_edge & RESIZE_BOTTOM) {
+                new_h = resize_start_h + dy;
+            }
+
+            /* Enforce minimum size */
+            if (new_w < MIN_WINDOW_WIDTH) {
+                if (resize_edge & RESIZE_LEFT) {
+                    new_x = resize_start_x + resize_start_w - MIN_WINDOW_WIDTH;
+                }
+                new_w = MIN_WINDOW_WIDTH;
+            }
+            if (new_h < MIN_WINDOW_HEIGHT) {
+                if (resize_edge & RESIZE_TOP) {
+                    new_y = resize_start_y + resize_start_h - MIN_WINDOW_HEIGHT;
+                }
+                new_h = MIN_WINDOW_HEIGHT;
+            }
+
+            /* Keep on screen */
+            if (new_x < 0) new_x = 0;
+            if (new_y < 0) new_y = 0;
+
+            resizing_window->x = new_x;
+            resizing_window->y = new_y;
+            resizing_window->width = new_w;
+            resizing_window->height = new_h;
+        } else if (resizing_window && !left_pressed) {
+            /* Stop resizing */
+            resizing_window = 0;
+            resize_edge = RESIZE_NONE;
+        }
         /* Handle dragging */
-        if (dragging_window && left_pressed) {
+        else if (dragging_window && left_pressed) {
             /* Continue dragging - update window position */
             dragging_window->x = mx - drag_offset_x;
             dragging_window->y = my - drag_offset_y;
@@ -202,8 +311,21 @@ void desktop_run(void) {
                 /* Click in desktop/window area */
                 window_t* focused = wm_get_focused();
 
+                /* Check for resize edge first */
+                int edge = get_resize_edge(focused, mx, my);
+                if (focused && edge != RESIZE_NONE) {
+                    /* Start resizing */
+                    resizing_window = focused;
+                    resize_edge = edge;
+                    resize_start_mx = mx;
+                    resize_start_my = my;
+                    resize_start_x = focused->x;
+                    resize_start_y = focused->y;
+                    resize_start_w = focused->width;
+                    resize_start_h = focused->height;
+                }
                 /* Check if clicking on focused window's titlebar to start drag */
-                if (focused && point_in_titlebar(focused, mx, my)) {
+                else if (focused && point_in_titlebar(focused, mx, my)) {
                     dragging_window = focused;
                     drag_offset_x = mx - focused->x;
                     drag_offset_y = my - focused->y;
@@ -213,10 +335,23 @@ void desktop_run(void) {
 
                     /* After handling, check if we should start dragging new focused window */
                     window_t* new_focused = wm_get_focused();
-                    if (new_focused && point_in_titlebar(new_focused, mx, my)) {
-                        dragging_window = new_focused;
-                        drag_offset_x = mx - new_focused->x;
-                        drag_offset_y = my - new_focused->y;
+                    if (new_focused && new_focused != focused) {
+                        /* Check for resize on newly focused window */
+                        int new_edge = get_resize_edge(new_focused, mx, my);
+                        if (new_edge != RESIZE_NONE) {
+                            resizing_window = new_focused;
+                            resize_edge = new_edge;
+                            resize_start_mx = mx;
+                            resize_start_my = my;
+                            resize_start_x = new_focused->x;
+                            resize_start_y = new_focused->y;
+                            resize_start_w = new_focused->width;
+                            resize_start_h = new_focused->height;
+                        } else if (point_in_titlebar(new_focused, mx, my)) {
+                            dragging_window = new_focused;
+                            drag_offset_x = mx - new_focused->x;
+                            drag_offset_y = my - new_focused->y;
+                        }
                     }
                 }
             }

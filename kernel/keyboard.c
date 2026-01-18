@@ -65,6 +65,16 @@ static const char scancode_to_ascii_shift[128] = {
 #define SCANCODE_CAPS_LOCK           0x3A
 #define SCANCODE_CTRL                0x1D
 #define SCANCODE_ALT                 0x38
+#define SCANCODE_EXTENDED            0xE0
+
+/* Extended key scancodes (after 0xE0 prefix) */
+#define SCANCODE_EXT_UP              0x48
+#define SCANCODE_EXT_DOWN            0x50
+#define SCANCODE_EXT_LEFT            0x4B
+#define SCANCODE_EXT_RIGHT           0x4D
+
+/* Extended scancode state */
+static volatile uint8_t extended_scancode = 0;
 
 /**
  * Add a character to the keyboard buffer
@@ -156,6 +166,39 @@ void keyboard_handler(void) {
 
     /* Read scancode from keyboard data port */
     scancode = inb(KEYBOARD_DATA_PORT);
+
+    /* Handle extended scancode prefix */
+    if (scancode == SCANCODE_EXTENDED) {
+        extended_scancode = 1;
+        return;
+    }
+
+    /* Handle extended scancodes (arrow keys, etc.) */
+    if (extended_scancode) {
+        extended_scancode = 0;
+
+        /* Ignore key releases */
+        if (scancode >= 0x80) {
+            return;
+        }
+
+        /* Map extended scancodes to special key values */
+        switch (scancode) {
+            case SCANCODE_EXT_UP:
+                buffer_put(KEY_UP);
+                break;
+            case SCANCODE_EXT_DOWN:
+                buffer_put(KEY_DOWN);
+                break;
+            case SCANCODE_EXT_LEFT:
+                buffer_put(KEY_LEFT);
+                break;
+            case SCANCODE_EXT_RIGHT:
+                buffer_put(KEY_RIGHT);
+                break;
+        }
+        return;
+    }
 
     /* Handle shift key press/release */
     if (scancode == SCANCODE_LEFT_SHIFT_PRESS ||

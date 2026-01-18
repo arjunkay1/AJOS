@@ -334,7 +334,7 @@ void wm_handle_mouse(int x, int y, int buttons) {
 }
 
 // Handle keyboard input
-void wm_handle_key(char key) {
+void wm_handle_key(unsigned char key) {
     window_t* focused = wm_get_focused();
     if (focused && focused->on_key) {
         focused->on_key(focused, key);

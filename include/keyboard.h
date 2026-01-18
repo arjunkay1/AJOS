@@ -16,6 +16,12 @@
 #define KEY_TAB       0x09
 #define KEY_ESCAPE    0x1B
 
+/* Arrow key codes (use values > 127 to avoid ASCII conflict) */
+#define KEY_UP        0x80
+#define KEY_DOWN      0x81
+#define KEY_LEFT      0x82
+#define KEY_RIGHT     0x83
+
 /* Function declarations */
 
 /**
