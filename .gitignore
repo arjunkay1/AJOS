@@ -1,0 +1,20 @@
+# Build artifacts
+build/
+*.o
+*.bin
+*.iso
+*.elf
+
+# ISO directory (generated)
+iso/boot/kernel.bin
+iso/boot/grub/grub.cfg
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
